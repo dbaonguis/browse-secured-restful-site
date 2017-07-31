@@ -1,6 +1,8 @@
 package com.example.controller;
 
 import java.io.IOException;
+import java.util.Calendar;
+import java.util.Date;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
@@ -14,7 +16,9 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.example.domain.JSession;
 import com.example.domain.RestContestant;
+import com.example.service.JSessionService;
 import com.example.service.MyBean;
 
 
@@ -23,6 +27,9 @@ public class BrowseController {
 
 	@Autowired
 	private MyBean myBean;
+	
+	@Autowired
+	private JSessionService jsessionService;
 	
 	@RequestMapping(path="/browse", method=RequestMethod.GET)
 	public ModelAndView browse() {
@@ -48,6 +55,14 @@ public class BrowseController {
 			//This is not a GREAT validation, but this will do for now..
 			if ((responseAfterLogin.url().toString().equalsIgnoreCase("http://localhost:8080/")) && (responseAfterLogin.statusCode() == 200)) {
 				
+				//save the JSessionID to inmemory DB
+				JSession jsession = new JSession();
+				Calendar calendar = Calendar.getInstance();
+				Date now = calendar.getTime();
+				jsession.setDateCreated(now);
+				jsession.setCode( responseAfterLogin.cookies().get("JSESSIONID") );
+				jsessionService.save(jsession);
+				
 				try {
 					//consume...
 					//RestTemplate restTemplate = new RestTemplate();
@@ -68,6 +83,24 @@ public class BrowseController {
 		}
 		
 		
+		
+		
+		return new ModelAndView("browse");
+	}
+	
+	
+	@RequestMapping(path="/browse2", method=RequestMethod.GET)
+	public ModelAndView browse2() {
+		
+		System.out.println("Last session: " + jsessionService.findLastJSession().getCode() );
+		
+		try {
+			RestContestant restContestant = myBean.someRestCall(new Long(2), "JSESSIONID="+jsessionService.findLastJSession().getCode());
+		
+			System.out.println("test");
+		} catch (RestClientException restEx) {
+			restEx.printStackTrace();
+		} 
 		
 		
 		return new ModelAndView("browse");
